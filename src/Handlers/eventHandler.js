@@ -1,0 +1,29 @@
+const path = require('path');
+const getAllFiles = require("../utils/getAllFiles");
+const { eventNames } = require('process');
+module.exports = (client) => {
+    const eventFolders = getAllFiles(path.join(__dirname,'..','events'), true);
+    
+    for (const eventFolder of eventFolders){
+        const eventFiles = getAllFiles(eventFolder);
+        
+        eventFiles.sort((a,b)=> a > b);
+        const eventName = eventFolder.replace(/\\/g,'/').split('/').pop();
+        
+
+        client.on(eventName, async(arg) =>{
+            for(const eventFile of eventFiles){
+                const eventFunction = require(eventFile);
+                await eventFunction(client,arg);
+            }
+        });
+    }
+
+    client.on('voiceStateUpdate', async (oldState,newState) => {
+        if (newState.member.user.bot && newState.channel && !oldState.channel){
+            console.log("bot has joined VC!") 
+            const voiceHandler = require('./voiceHandler');
+            voiceHandler.startListening(client,newState.channel);
+        }
+    });
+};
